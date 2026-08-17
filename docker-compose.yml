@@ -1,0 +1,72 @@
+# Emuladores locais do GCP.
+#
+# Ideia central do projeto: o codigo Python usa os SDKs OFICIAIS do Google
+# (google-cloud-storage, google-cloud-pubsub). Quem decide se ele fala com o
+# emulador ou com o GCP de verdade sao duas variaveis de ambiente - nao um if
+# no codigo, nao uma camada de abstracao propria. Ver .env.example.
+#
+# Por que emulador e nao mock?
+#   mock  -> testa o que VOCE IMAGINOU que a API faz
+#   emulador -> testa contra uma implementacao real do contrato da API
+# E' isso que faz a migracao para o GCP (Fase 9) ser um diff pequeno.
+
+name: bikeflow
+
+services:
+  # -------------------------------------------------------------------------
+  # Cloud Storage <- fake-gcs-server
+  # Guarda a camada LANDING: zips originais das viagens + snapshots do GBFS.
+  # -------------------------------------------------------------------------
+  fake-gcs:
+    image: fsouza/fake-gcs-server:1.55.1
+    container_name: bikeflow-gcs
+    command:
+      - -scheme=http
+      - -port=4443
+      # -public-host precisa bater com o host que o CLIENTE usa, senao as URLs
+      # de download que o servidor devolve apontam para um host inalcancavel.
+      - -public-host=localhost:4443
+      # backend=filesystem (nao memory): a landing precisa sobreviver a
+      # restart do container. Baixar 1 GB de novo a cada 'docker compose up'
+      # seria inaceitavel.
+      - -backend=filesystem
+      - -filesystem-root=/data
+    ports:
+      - "4443:4443"
+    volumes:
+      # Bind mount, nao volume nomeado: 'docker compose down -v' apaga volumes
+      # nomeados mas NAO apaga bind mount. A landing sobrevive ao teardown.
+      - ./.emulator/gcs:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4443/storage/v1/b"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Pub/Sub <- emulador OFICIAL do Google, dentro da imagem do gcloud CLI.
+  # Recebe os eventos de status das estacoes vindos do poller GBFS.
+  # -------------------------------------------------------------------------
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: bikeflow-pubsub
+    command: >
+      gcloud beta emulators pubsub start
+      --project=bikeflow-local
+      --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8085"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+# NOTA sobre persistencia do Pub/Sub: o emulador NAO persiste nada. Topicos,
+# subscriptions e mensagens morrem junto com o container (documentado pelo
+# Google). Consequencia de design: o bootstrap que cria topico/subscription
+# precisa ser idempotente e roda a cada 'make up'. Isso e' bom - forca o mesmo
+# padrao "create if not exists" que voce quer em producao.

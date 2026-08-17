@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bikeflow"
+version = "0.1.0"
+description = "Plataforma de dados para mobilidade compartilhada (Citi Bike) - local-first, portavel para GCP"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+
+# Dependencias de runtime. Note que sao os SDKs OFICIAIS do Google:
+# em desenvolvimento eles apontam para emuladores via variavel de ambiente,
+# em producao apontam para o GCP real. Mesmo codigo, mesmo pacote.
+dependencies = [
+    "google-cloud-storage>=2.14",
+    "google-cloud-pubsub>=2.19",
+    "requests>=2.31",
+    "pyarrow>=15.0",
+    "duckdb>=1.0",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "structlog>=24.1",
+    "tenacity>=8.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "responses>=0.25",
+    "ruff>=0.3",
+    "mypy>=1.9",
+    "types-requests",
+    "pre-commit>=3.6",
+]
+# dbt fica em extra separado de proposito: a arvore de dependencias dele e'
+# pesada e conflita com facilidade. Quem so' quer rodar a ingestao nao precisa.
+dbt = [
+    "dbt-core>=1.8",
+    "dbt-duckdb>=1.8",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ---------------------------------------------------------------------------
+# Ruff: linter + formatter em um so' binario (substitui flake8 + isort + black)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes (bugs reais: variavel nao usada, import quebrado)
+    "W",    # warnings
+    "I",    # isort (ordem dos imports)
+    "UP",   # pyupgrade (sintaxe moderna de Python)
+    "B",    # flake8-bugbear (armadilhas: mutable default arg, etc)
+    "SIM",  # flake8-simplify
+    "C4",   # comprehensions
+    "PTH",  # prefira pathlib a os.path
+    "RUF",  # regras proprias do ruff
+]
+ignore = [
+    "E501",  # tamanho de linha e' responsabilidade do formatter, nao do linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]  # assert False e' aceitavel em teste
+
+# ---------------------------------------------------------------------------
+# Mypy: checagem estatica de tipos.
+# Nao usamos strict=true ainda - seria fricção demais na Fase 0. Subimos o
+# rigor conforme o codebase amadurece (ver docs/adr quando isso mudar).
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["google.*", "duckdb.*", "pyarrow.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: exige os emuladores rodando (make up antes)",
+]

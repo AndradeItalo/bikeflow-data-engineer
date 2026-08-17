@@ -1,0 +1,67 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# --- dbt (Fase 2) ---
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# --- DuckDB ---
+# O warehouse local e' dado DERIVADO: sempre reconstruivel a partir de landing/.
+# Versionar um .duckdb de centenas de MB e' erro classico.
+*.duckdb
+*.duckdb.wal
+
+# --- Dados ---
+# A licenca do Citi Bike proibe redistribuir os dados como dataset standalone.
+# Nada de dado bruto ou derivado entra no Git.
+data/*
+!data/.gitkeep
+
+# --- Terraform (Fase 1) ---
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+# NOTA: .terraform.lock.hcl NAO entra aqui de proposito - lock file deve ser
+# versionado (mesma logica de package-lock.json), senao cada maquina resolve
+# uma versao diferente de provider.
+
+# --- Estado dos emuladores ---
+# Bind mount do fake-gcs: e' a camada landing local (dado bruto, ver licenca).
+.emulator/
+
+# --- Node / Evidence.dev (Fase 6) ---
+node_modules/
+.evidence/
+
+# --- Ambiente e segredos ---
+.env
+.env.*
+!.env.example
+*-key.json
+*-credentials.json
+service-account*.json
+
+# --- IDE / SO ---
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store

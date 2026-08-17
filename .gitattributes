@@ -1,0 +1,21 @@
+# Fim de linha: LF no repositorio, SEMPRE.
+#
+# Sem isto, quem clonar no Windows com o autocrlf padrao do Git for Windows
+# acaba commitando CRLF, e o diff do proximo Linux vira um mar de ^M. Pior:
+# script .sh e Makefile com CRLF simplesmente nao executam.
+* text=auto eol=lf
+
+# Estes quebram de verdade se virarem CRLF
+*.sh      text eol=lf
+Makefile  text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+
+# Binarios: nunca converter
+*.parquet binary
+*.zip     binary
+*.gz      binary
+*.duckdb  binary
+*.png     binary
+*.jpg     binary
+*.ico     binary
