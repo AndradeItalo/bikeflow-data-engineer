@@ -58,6 +58,9 @@ node_modules/
 *-credentials.json
 service-account*.json
 
+# --- Notas de colaboracao com IA (nao publicar no repo remoto) ---
+CLAUDE.md
+
 # --- IDE / SO ---
 .vscode/
 .idea/
