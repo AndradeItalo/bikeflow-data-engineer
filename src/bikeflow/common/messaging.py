@@ -19,12 +19,19 @@ from bikeflow.common.config import get_settings
 
 
 def get_publisher() -> pubsub_v1.PublisherClient:
-    """Publisher client do Pub/Sub."""
+    """Publisher client do Pub/Sub.
+
+    get_settings() roda antes de instanciar o client: e' ela quem exporta
+    PUBSUB_EMULATOR_HOST para o processo, e o client decide o endpoint no
+    momento em que e' criado - depois disso, mudar a env var nao tem efeito.
+    """
+    get_settings()
     return pubsub_v1.PublisherClient()
 
 
 def get_subscriber() -> pubsub_v1.SubscriberClient:
-    """Subscriber client do Pub/Sub."""
+    """Subscriber client do Pub/Sub. Mesmo motivo de get_publisher()."""
+    get_settings()
     return pubsub_v1.SubscriberClient()
 
 
@@ -79,15 +86,16 @@ def publish_json(payload: dict[str, Any], topic_id: str | None = None) -> str:
 def pull_once(
     max_messages: int = 10,
     subscription_id: str | None = None,
+    timeout: float = 10,
 ) -> list[dict[str, Any]]:
     """Puxa ate' N mensagens pendentes e da' ack. Devolve os payloads decodificados.
 
     Pull sincrono, usado em teste e checkpoint - o consumidor real (Fase 3)
-    usa streaming pull.
+    usa streaming pull. Sem mensagem disponivel, bloqueia ate' `timeout`.
     """
     subscriber = get_subscriber()
     path = subscription_path(subscription_id)
-    response = subscriber.pull(subscription=path, max_messages=max_messages, timeout=10)
+    response = subscriber.pull(subscription=path, max_messages=max_messages, timeout=timeout)
 
     payloads = []
     ack_ids = []

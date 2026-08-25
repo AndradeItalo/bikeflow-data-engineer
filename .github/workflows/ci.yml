@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instala o projeto
+        run: make install
+
+      - name: Lint (ruff + mypy)
+        run: make lint
+
+      - name: Sobe os emuladores
+        run: make up
+
+      - name: Testes (unit + integration)
+        run: make test-all
+
+      - name: Derruba os emuladores
+        if: always()
+        run: make down

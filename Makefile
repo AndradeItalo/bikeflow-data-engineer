@@ -24,9 +24,9 @@ install: venv  ## Cria o venv e instala o pacote em modo editavel + deps de dev
 	$(PY) -m pip install --upgrade pip
 	$(PY) -m pip install -e ".[dev]"
 
-up:  ## Sobe os emuladores (fake-gcs + pub/sub)
-	docker compose up -d
-	@echo "Emuladores no ar. 'make logs' para acompanhar."
+up:  ## Sobe os emuladores (fake-gcs + pub/sub) e espera ficarem saudaveis
+	docker compose up -d --wait
+	@echo "Emuladores no ar."
 
 down:  ## Derruba os emuladores e apaga os volumes
 	docker compose down -v
