@@ -60,3 +60,13 @@ def download_bytes(blob_name: str, bucket_name: str | None = None) -> bytes:
     settings = get_settings()
     bucket = get_client().bucket(bucket_name or settings.bucket)
     return bucket.blob(blob_name).download_as_bytes()
+
+
+def download_to_file(blob_name: str, destination: str, bucket_name: str | None = None) -> None:
+    """Baixa o objeto para um arquivo local, sem carregar tudo em memoria.
+
+    Para os zips de viagem, que passam de 300MB - download_bytes() estouraria RAM.
+    """
+    settings = get_settings()
+    bucket = get_client().bucket(bucket_name or settings.bucket)
+    bucket.blob(blob_name).download_to_filename(destination)

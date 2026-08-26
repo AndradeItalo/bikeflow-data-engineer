@@ -10,12 +10,17 @@ from bikeflow.common import warehouse
 
 
 def already_downloaded(source_key: str, etag: str) -> bool:
-    """Diz se esse arquivo, nesse etag exato, ja' foi baixado com sucesso."""
+    """Diz se esse arquivo, nesse etag exato, ja' foi baixado com sucesso.
+
+    status IN ('downloaded', 'loaded'): 'loaded' tambem conta, senao um
+    arquivo ja' processado ate' o bronze seria baixado de novo a toa (o
+    status muda de 'downloaded' para 'loaded' em mark_loaded()).
+    """
     with warehouse.get_connection() as conn:
         row = conn.execute(
             """
             SELECT 1 FROM meta.ingestion_manifest
-            WHERE source_key = ? AND etag = ? AND status = 'downloaded'
+            WHERE source_key = ? AND etag = ? AND status IN ('downloaded', 'loaded')
             """,
             [source_key, etag],
         ).fetchone()
@@ -46,4 +51,13 @@ def record_download(
                 ingested_at = now()
             """,
             [source_key, source_url, etag, size_bytes, status, batch_id],
+        )
+
+
+def mark_loaded(source_key: str, row_count: int) -> None:
+    """Marca um arquivo ja' baixado como carregado em bronze, com o total de linhas."""
+    with warehouse.get_connection() as conn:
+        conn.execute(
+            "UPDATE meta.ingestion_manifest SET row_count = ?, status = 'loaded' WHERE source_key = ?",
+            [row_count, source_key],
         )
