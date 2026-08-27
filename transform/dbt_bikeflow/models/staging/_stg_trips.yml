@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: stg_trips
+    description: "Viagens deduplicadas por ride_id, com timestamps convertidos para UTC."
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "ended_at > started_at"
+    columns:
+      - name: ride_id
+        tests:
+          - unique
+          - not_null
+      - name: started_at
+        tests:
+          - not_null
+      - name: ended_at
+        tests:
+          - not_null
+      - name: rideable_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["classic_bike", "electric_bike"]
+      - name: member_casual
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["member", "casual"]

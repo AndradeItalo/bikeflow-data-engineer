@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: dim_station
+    description: >
+      Estacoes distintas observadas em viagens. Simples por enquanto (nao
+      SCD2) - vira SCD2 de verdade a partir do GBFS station_information na
+      Fase 3. Ver ADR-0004.
+    columns:
+      - name: station_key
+        tests:
+          - unique
+          - not_null
+      - name: station_id
+        tests:
+          - unique
+          - not_null

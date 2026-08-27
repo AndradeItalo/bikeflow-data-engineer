@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: dim_time
+    description: "Uma linha por hora do dia (0-23)."
+    columns:
+      - name: time_key
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_member_type
+    description: "Tipos de associado observados em stg_trips (member/casual)."
+    columns:
+      - name: member_type
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_rideable_type
+    description: "Tipos de bicicleta observados em stg_trips (classic_bike/electric_bike)."
+    columns:
+      - name: rideable_type
+        tests:
+          - unique
+          - not_null

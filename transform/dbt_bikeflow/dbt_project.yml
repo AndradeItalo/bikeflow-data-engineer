@@ -1,0 +1,29 @@
+name: bikeflow
+version: "1.0.0"
+config-version: 2
+
+profile: bikeflow
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+analysis-paths: ["analyses"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# staging/intermediate = silver (deduplicado, UTC, quarentena); marts = gold
+# (dimensional Kimball). As pastas nao sao as camadas - sao a organizacao
+# idiomatica do dbt dentro de cada camada. Ver docs/PLAN.md.
+models:
+  bikeflow:
+    staging:
+      +schema: silver
+      +materialized: view
+    intermediate:
+      +schema: silver
+      +materialized: view
+    marts:
+      +schema: gold
+      +materialized: table

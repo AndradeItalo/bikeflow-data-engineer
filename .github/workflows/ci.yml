@@ -28,6 +28,14 @@ jobs:
       - name: Testes (unit + integration)
         run: make test-all
 
+      - name: Popula bronze.trips com 1 mes real pequeno (JC)
+        run: make seed-bronze
+
+      - name: Instala e roda o dbt (silver + gold)
+        run: |
+          make install-dbt
+          make dbt-build
+
       - name: Derruba os emuladores
         if: always()
         run: make down

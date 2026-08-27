@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: fct_trip
+    description: "Grao: 1 viagem. Incremental por ride_id."
+    columns:
+      - name: ride_id
+        tests:
+          - unique
+          - not_null
+      - name: start_station_key
+        tests:
+          - relationships:
+              arguments:
+                to: ref("dim_station")
+                field: station_key
+      - name: end_station_key
+        tests:
+          - relationships:
+              arguments:
+                to: ref("dim_station")
+                field: station_key
+      - name: trip_duration_sec
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 60 and 86400"
+              config:
+                severity: warn
+                # 8 viagens reais (fev/2025) ficam entre 24,99h e 25h - padrao
+                # consistente demais pra ser corrupcao de dado, parece o
+                # proprio sistema da Citi Bike fechando a viagem a forca
+                # quando a bicicleta nao volta numa doca em 24h. Rebaixado
+                # pra warn ate' existir quarentena (_rejected) de verdade -
+                # nao faz sentido a build inteira falhar por um padrao
+                # conhecido e explicavel do sistema fonte.

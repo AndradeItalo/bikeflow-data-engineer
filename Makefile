@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help venv install up down logs lint fmt test test-all clean
+.PHONY: help venv install install-dbt up down logs lint fmt test test-all seed-bronze dbt-debug dbt-deps dbt-build clean
 
 # O diretorio de binarios do venv muda de nome entre Windows e Unix:
 #   Windows -> .venv/Scripts    Linux/macOS -> .venv/bin
@@ -12,6 +12,7 @@ else
 	BIN := $(VENV)/bin
 endif
 PY := $(BIN)/python
+DBT_DIR := transform/dbt_bikeflow
 
 help:  ## Mostra os comandos disponiveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -23,6 +24,9 @@ venv:  ## Cria o virtualenv (roda uma vez)
 install: venv  ## Cria o venv e instala o pacote em modo editavel + deps de dev
 	$(PY) -m pip install --upgrade pip
 	$(PY) -m pip install -e ".[dev]"
+
+install-dbt:  ## Instala o extra dbt (separado - so' quem mexe em silver/gold precisa)
+	$(PY) -m pip install -e ".[dbt]"
 
 up:  ## Sobe os emuladores (fake-gcs + pub/sub) e espera ficarem saudaveis
 	docker compose up -d --wait
@@ -48,6 +52,18 @@ test:  ## Testes unitarios (nao precisa de emulador)
 
 test-all:  ## Todos os testes, inclusive integracao (rode 'make up' antes)
 	$(BIN)/pytest
+
+seed-bronze:  ## Ingere 1 mes real pequeno (JC) em bronze.trips - para testar dbt sem esperar a NYC inteira
+	$(PY) -c "from bikeflow.ingestion.trips.pipeline import ingest_month; print(ingest_month(2025, 2, 'jc'))"
+
+dbt-debug:  ## Testa a conexao do dbt com o warehouse local
+	$(BIN)/dbt debug --project-dir $(DBT_DIR) --profiles-dir $(DBT_DIR)
+
+dbt-deps:  ## Instala os pacotes do dbt (dbt_utils)
+	$(BIN)/dbt deps --project-dir $(DBT_DIR)
+
+dbt-build: dbt-deps  ## Roda os models e testes do dbt (silver + gold)
+	$(BIN)/dbt build --project-dir $(DBT_DIR) --profiles-dir $(DBT_DIR)
 
 clean:  ## Remove artefatos de build e cache
 	rm -rf .pytest_cache .mypy_cache .ruff_cache build dist htmlcov .coverage

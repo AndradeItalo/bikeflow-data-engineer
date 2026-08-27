@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    tables:
+      - name: trips
+        description: >
+          Carga 1:1 do CSV de viagens, sem regra de negocio. Escrita pelo job
+          de ingestao (bikeflow.ingestion.trips.normalizer), nao pelo dbt.

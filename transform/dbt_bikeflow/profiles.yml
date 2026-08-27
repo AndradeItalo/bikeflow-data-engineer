@@ -1,0 +1,14 @@
+# Fica dentro do projeto (nao em ~/.dbt/) de proposito: clonar o repo e rodar
+# `make dbt-build` nao pode depender de configuracao manual por maquina.
+# BIKEFLOW_DUCKDB_PATH e' a MESMA variavel que bikeflow.common.config le - e'
+# o mesmo arquivo .duckdb que o job de ingestao (Fase 1) escreve em bronze.
+bikeflow:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('BIKEFLOW_DUCKDB_PATH', 'data/bikeflow.duckdb') }}"
+      schema: main
+      threads: 4
+      extensions:
+        - icu # timezone-aware AT TIME ZONE, usado em bf_to_utc()
