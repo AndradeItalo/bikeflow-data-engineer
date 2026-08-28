@@ -61,16 +61,33 @@ def ensure_topic(topic_id: str | None = None) -> str:
 def ensure_subscription(
     subscription_id: str | None = None,
     topic_id: str | None = None,
+    dead_letter_topic_id: str | None = None,
+    max_delivery_attempts: int = 5,
 ) -> str:
     """Cria a subscription se nao existir. Idempotente. Devolve o caminho.
 
-    Dead-letter policy fica para a Fase 3 - aqui so' o caminho feliz.
+    dead_letter_topic_id: se passado, mensagem que falhar o processamento
+    (nao receber ack) N vezes e' redirecionada pelo proprio Pub/Sub para esse
+    topico - testado contra o emulador de verdade, ele implementa isso.
+    max_delivery_attempts minimo e' 5 no Pub/Sub real (o emulador nao valida,
+    mas usar <5 aqui quebraria na migracao para GCP).
+
+    dead_letter_policy nao e' um argumento "achatado" deste metodo - so' da'
+    pra passar via `request=` completo, diferente de name/topic.
     """
     subscriber = get_subscriber()
     sub_path = subscription_path(subscription_id)
     tp_path = topic_path(topic_id)
+
+    request: dict[str, Any] = {"name": sub_path, "topic": tp_path}
+    if dead_letter_topic_id:
+        request["dead_letter_policy"] = {
+            "dead_letter_topic": topic_path(dead_letter_topic_id),
+            "max_delivery_attempts": max_delivery_attempts,
+        }
+
     with contextlib.suppress(exceptions.AlreadyExists):
-        subscriber.create_subscription(name=sub_path, topic=tp_path)
+        subscriber.create_subscription(request=request)
     return sub_path
 
 

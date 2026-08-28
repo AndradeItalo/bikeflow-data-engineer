@@ -8,3 +8,9 @@ sources:
         description: >
           Carga 1:1 do CSV de viagens, sem regra de negocio. Escrita pelo job
           de ingestao (bikeflow.ingestion.trips.normalizer), nao pelo dbt.
+      - name: station_information
+        description: >
+          Snapshot ATUAL (truncate + insert) do feed GBFS station_information.
+          Escrita por bikeflow.ingestion.gbfs.snapshot, nao pelo dbt. O
+          historico de mudancas (SCD2) e' construido pelo dbt snapshot
+          station_snapshot, nao por esta tabela.

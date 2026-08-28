@@ -52,3 +52,42 @@ hash MD5 de string vazia). Corrigido filtrando `!= ''` também.
   `station_key` para funcionar - não precisa que `dim_station` esteja completa.
 - `station_key` estável evita retrabalho em `fct_trip` quando a Fase 3
   reconstruir `dim_station` como SCD2.
+
+## Atualização (Fase 3, 2026-08-27)
+
+O GBFS chegou. `dim_station` foi reconstruída como SCD2 de verdade via `dbt
+snapshot` (`station_snapshot`, strategy `check` sobre `short_name`/`name`/
+`lat`/`lon`/`capacity`) a partir de `bronze.station_information`.
+`station_key` agora é por **versão** (`station_id` + `dbt_valid_from`), não
+mais por estação — é assim que SCD2 funciona de verdade, cada versão
+histórica precisa da própria chave. `fct_trip` continua com o mesmo formato
+de join, só trocando a coluna: `short_name` em vez de `station_id`, travado
+em `is_current = true` para não gerar fan-out entre versões históricas.
+
+O `station_xref` real (teste `assert_station_xref_match_rate`, piso de 95%
+do `PLAN.md`) passou com **95,24%** de match (126 códigos distintos vistos em
+viagens, ~6 sem correspondência) — perto o suficiente do piso pra valer
+registrar por quê:
+
+1. **As viagens são de fevereiro/2025; o snapshot do GBFS é de agora.**
+   Estações fecham, são renomeadas ou renumeradas nesse intervalo — 100% de
+   match entre um histórico e um snapshot atual nunca é esperado.
+2. **Achado novo, fora do escopo que o `PLAN.md` documentava**: dois dos
+   códigos sem match têm prefixo `HB` (`HB102`, `HB508`) — **Hoboken**, uma
+   terceira área de operação da Citi Bike (além de NYC e Jersey City) que o
+   `PLAN.md` nunca menciona no "Escopo de dados". Não é um bug do resolver;
+   é uma lacuna de escopo que só apareceu rodando o teste de match contra
+   dado real.
+
+Nenhuma ação tomada sobre a lacuna de Hoboken agora — registrado aqui e no
+`docs/findings-log.md` para decisão futura (ampliar escopo ou declarar fora
+de escopo explicitamente, em vez de ignorar).
+
+**Nota de correção:** logo depois desta análise, uma recarga de
+`bronze.station_information` interrompida no meio (sem transação) derrubou a
+taxa medida para 45% — não era drift real, era corrupção de dado causada por
+`load_station_information()` não ser atômica (`DELETE` aplicado, só parte do
+`INSERT` novo concluído). Corrigido envolvendo a operação em
+`BEGIN`/`COMMIT`/`ROLLBACK` explícitos e trocando o loop linha a linha por
+`executemany`. Depois da correção, a taxa voltou a bater os mesmos 95,24% -
+confirma que o número original era real, não sorte.

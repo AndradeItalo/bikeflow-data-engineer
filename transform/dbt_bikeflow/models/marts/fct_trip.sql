@@ -36,10 +36,15 @@ select
     {{ bf_haversine_km("trips.start_lat", "trips.start_lng", "trips.end_lat", "trips.end_lng") }}
         as distance_km
 from trips
+-- join por short_name, nao station_id: viagens usam o mesmo formato de
+-- codigo do short_name do GBFS (ex: "3460.01"), nunca o station_id
+-- (UUID/numero) - ver ADR-0004. is_current trava na versao vigente da
+-- estacao, senao o SCD2 de dim_station faria fan-out (1 linha de viagem por
+-- versao historica da estacao).
 left join {{ ref("dim_station") }} as start_station
-    on trips.start_station_id = start_station.station_id
+    on trips.start_station_id = start_station.short_name and start_station.is_current
 left join {{ ref("dim_station") }} as end_station
-    on trips.end_station_id = end_station.station_id
+    on trips.end_station_id = end_station.short_name and end_station.is_current
 left join {{ ref("dim_date") }} as start_date
     on date(trips.started_at_utc) = start_date.date_day
 left join {{ ref("dim_date") }} as end_date

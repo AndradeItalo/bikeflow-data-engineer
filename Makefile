@@ -53,8 +53,9 @@ test:  ## Testes unitarios (nao precisa de emulador)
 test-all:  ## Todos os testes, inclusive integracao (rode 'make up' antes)
 	$(BIN)/pytest
 
-seed-bronze:  ## Ingere 1 mes real pequeno (JC) em bronze.trips - para testar dbt sem esperar a NYC inteira
+seed-bronze:  ## Ingere 1 mes real pequeno (JC) + snapshot GBFS em bronze - para testar dbt sem esperar a NYC inteira
 	$(PY) -c "from bikeflow.ingestion.trips.pipeline import ingest_month; print(ingest_month(2025, 2, 'jc'))"
+	$(PY) -c "from bikeflow.ingestion.gbfs.snapshot import load_station_information; print(load_station_information())"
 
 dbt-debug:  ## Testa a conexao do dbt com o warehouse local
 	$(BIN)/dbt debug --project-dir $(DBT_DIR) --profiles-dir $(DBT_DIR)

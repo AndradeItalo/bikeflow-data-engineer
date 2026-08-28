@@ -60,6 +60,7 @@ service-account*.json
 
 # --- Notas de colaboracao com IA (nao publicar no repo remoto) ---
 CLAUDE.md
+docs/findings-log.md
 
 # --- IDE / SO ---
 .vscode/

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import uuid
+from collections.abc import Generator
 
 import pytest
 from google.api_core import exceptions
@@ -16,7 +17,7 @@ from bikeflow.common import messaging, storage
 
 
 @pytest.fixture
-def bucket_name() -> str:
+def bucket_name() -> Generator[str]:
     name = f"test-bucket-{uuid.uuid4().hex[:8]}"
     yield name
     bucket = storage.get_client().lookup_bucket(name)
@@ -24,19 +25,37 @@ def bucket_name() -> str:
         bucket.delete(force=True)
 
 
-@pytest.fixture
-def topic_id() -> str:
+def _unique_topic() -> Generator[str]:
     name = f"test-topic-{uuid.uuid4().hex[:8]}"
     yield name
     with contextlib.suppress(exceptions.NotFound):
         messaging.get_publisher().delete_topic(topic=messaging.topic_path(name))
 
 
-@pytest.fixture
-def subscription_id() -> str:
+def _unique_subscription() -> Generator[str]:
     name = f"test-sub-{uuid.uuid4().hex[:8]}"
     yield name
     with contextlib.suppress(exceptions.NotFound):
         messaging.get_subscriber().delete_subscription(
             subscription=messaging.subscription_path(name)
         )
+
+
+@pytest.fixture
+def topic_id() -> Generator[str]:
+    yield from _unique_topic()
+
+
+@pytest.fixture
+def subscription_id() -> Generator[str]:
+    yield from _unique_subscription()
+
+
+@pytest.fixture
+def dlq_topic_id() -> Generator[str]:
+    yield from _unique_topic()
+
+
+@pytest.fixture
+def dlq_subscription_id() -> Generator[str]:
+    yield from _unique_subscription()

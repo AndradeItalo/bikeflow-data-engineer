@@ -9,6 +9,7 @@ macro-paths: ["macros"]
 test-paths: ["tests"]
 seed-paths: ["seeds"]
 analysis-paths: ["analyses"]
+snapshot-paths: ["snapshots"]
 
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]

@@ -3,9 +3,10 @@ version: 2
 models:
   - name: dim_station
     description: >
-      Estacoes distintas observadas em viagens. Simples por enquanto (nao
-      SCD2) - vira SCD2 de verdade a partir do GBFS station_information na
-      Fase 3. Ver ADR-0004.
+      SCD2 de verdade a partir do GBFS station_information (via dbt snapshot
+      station_snapshot). Varias linhas por station_id ao longo do tempo -
+      station_id NAO e' unico aqui de proposito, quem precisa de 1 linha por
+      estacao filtra is_current.
     columns:
       - name: station_key
         tests:
@@ -13,5 +14,9 @@ models:
           - not_null
       - name: station_id
         tests:
-          - unique
           - not_null
+      - name: short_name
+        tests:
+          - not_null
+# "no maximo 1 versao atual por station_id" e' um teste singular, nao
+# generico - ver tests/assert_one_current_version_per_station.sql

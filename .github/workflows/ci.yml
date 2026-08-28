@@ -28,7 +28,7 @@ jobs:
       - name: Testes (unit + integration)
         run: make test-all
 
-      - name: Popula bronze.trips com 1 mes real pequeno (JC)
+      - name: Popula bronze (viagens JC + snapshot GBFS) com dado real
         run: make seed-bronze
 
       - name: Instala e roda o dbt (silver + gold)
