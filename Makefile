@@ -59,6 +59,11 @@ test-all:  ## Todos os testes, inclusive integracao (rode 'make up' antes)
 	$(BIN)/pytest
 
 seed-bronze:  ## Ingere 1 mes real pequeno (JC) + snapshot e 1 ciclo de poll/consume do GBFS em bronze
+	# bucket precisa existir antes do 1o upload - so' "funcionava" sem isso
+	# localmente porque o fake-gcs persiste em disco (.emulator/gcs,
+	# gitignored) e o bucket ja' tinha sido criado em testes anteriores. No
+	# CI, checkout limpo = emulador sem nenhum bucket (achado no CI real).
+	$(PY) -c "from bikeflow.common import storage; storage.ensure_bucket()"
 	$(PY) -c "from bikeflow.ingestion.trips.pipeline import ingest_month; print(ingest_month(2025, 2, 'jc'))"
 	$(PY) -c "from bikeflow.ingestion.gbfs.snapshot import load_station_information; print(load_station_information())"
 	# bronze.station_status so' existe depois de rodar o ciclo de streaming
