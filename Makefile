@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help venv install install-dbt up down logs lint fmt test test-all seed-bronze dbt-debug dbt-deps dbt-build clean
+.PHONY: help venv install install-dbt up down logs lint fmt test test-all seed-bronze dbt-debug dbt-deps dbt-build airflow-up airflow-logs clean
 
 # O diretorio de binarios do venv muda de nome entre Windows e Unix:
 #   Windows -> .venv/Scripts    Linux/macOS -> .venv/bin
@@ -32,8 +32,13 @@ up:  ## Sobe os emuladores (fake-gcs + pub/sub) e espera ficarem saudaveis
 	docker compose up -d --wait
 	@echo "Emuladores no ar."
 
-down:  ## Derruba os emuladores e apaga os volumes
-	docker compose down -v
+down:  ## Derruba TUDO (emuladores + Airflow, se estiver de pe') e apaga os volumes
+	# --profile airflow aqui e' de proposito, mesmo 'up' nao usando: sem isso,
+	# 'docker compose down' (sem --profile) ignora containers de profile nao
+	# ativado e eles ficam rodando orfaos em segundo plano - achado testando,
+	# nao suposicao. down = tudo limpo sempre; so' 'up' fica dividido por
+	# velocidade (up rapido vs airflow-up pesado).
+	docker compose --profile airflow down -v
 
 logs:  ## Acompanha os logs dos emuladores
 	docker compose logs -f
@@ -65,6 +70,28 @@ dbt-deps:  ## Instala os pacotes do dbt (dbt_utils)
 
 dbt-build: dbt-deps  ## Roda os models e testes do dbt (silver + gold)
 	$(BIN)/dbt build --project-dir $(DBT_DIR) --profiles-dir $(DBT_DIR)
+
+airflow-up:  ## Sobe emuladores + Airflow (Postgres, init, webserver, scheduler) - pesado, separado do 'make up'
+	mkdir -p data
+	# 'touch' criaria um arquivo vazio, que o DuckDB rejeita como banco
+	# invalido - precisa ser o proprio DuckDB criando (so' roda se o arquivo
+	# ainda nao existir).
+	test -f data/bikeflow.duckdb || $(PY) -c "import duckdb; duckdb.connect('data/bikeflow.duckdb').close()"
+	# Airflow roda como o usuario 'airflow' da imagem (uid fixo, diferente do
+	# seu) - o .duckdb vive num bind mount, e qualquer lado (host ou
+	# container) que crie o arquivo primeiro tranca o outro fora por
+	# permissao (visto na pratica nos dois sentidos). 'touch' + chmod ANTES
+	# de subir garante que o arquivo ja' existe permissivo quando o container
+	# for abri-lo - depois de criado, so' o dono consegue re-chmodar, entao
+	# tem que ser assim, preventivo. Artefatos do dbt (target/logs) vao para
+	# dentro do container, nao no bind mount de ./transform.
+	chmod 666 data/bikeflow.duckdb
+	chmod 777 data
+	docker compose --profile airflow up -d --build --wait
+	@echo "Airflow em http://localhost:8080 (admin/admin)."
+
+airflow-logs:  ## Acompanha os logs do scheduler (onde as tasks rodam com LocalExecutor)
+	docker compose logs -f airflow-scheduler
 
 clean:  ## Remove artefatos de build e cache
 	rm -rf .pytest_cache .mypy_cache .ruff_cache build dist htmlcov .coverage
