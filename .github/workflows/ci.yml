@@ -19,6 +19,14 @@ jobs:
       - name: Instala o projeto
         run: make install
 
+      # .env e' gitignored (nunca vai pro checkout) - sem ele, Settings() nao
+      # acha STORAGE_EMULATOR_HOST/PUBSUB_EMULATOR_HOST, get_settings() nao
+      # tem nada pra exportar, e o SDK do Google tenta autenticacao real do
+      # GCP (DefaultCredentialsError). So' funcionava local porque o .env
+      # sempre existia no disco - achado direto no CI real, nao localmente.
+      - name: Cria o .env a partir do .env.example
+        run: cp .env.example .env
+
       - name: Lint (ruff + mypy)
         run: make lint
 

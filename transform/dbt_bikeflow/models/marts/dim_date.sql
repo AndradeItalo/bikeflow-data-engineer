@@ -1,14 +1,31 @@
 -- Dimensao gerada (nao vem de nenhuma fonte) - vai do primeiro ao ultimo dia
--- observado em stg_trips. Nao hardcoda o intervalo: senao alguem precisa
--- lembrar de editar isso todo mes que chegar dado novo.
+-- observado em QUALQUER fonte com data (viagens + status de estacao). Nao
+-- hardcoda o intervalo: senao alguem precisa lembrar de editar isso toda
+-- vez que chegar dado novo. station_status entra aqui porque suas
+-- observacoes sao de "agora" - fora do intervalo historico das viagens - e
+-- sem isso o join em fct_station_status ficaria com date_key nulo.
 --
 -- extract(dow from data): confirmado empiricamente no DuckDB que 0=domingo,
 -- 6=sabado (nao e' universal entre bancos, por isso testei antes de assumir).
-with bounds as (
+with trip_dates as (
+    select date(started_at_utc) as observed_date from {{ ref("stg_trips") }}
+    union
+    select date(ended_at_utc) as observed_date from {{ ref("stg_trips") }}
+),
+
+station_status_dates as (
+    select date(observed_at_utc) as observed_date from {{ ref("stg_station_status") }}
+),
+
+bounds as (
     select
-        min(date(started_at_utc)) as min_date,
-        max(date(started_at_utc)) as max_date
-    from {{ ref("stg_trips") }}
+        min(observed_date) as min_date,
+        max(observed_date) as max_date
+    from (
+        select * from trip_dates
+        union all
+        select * from station_status_dates
+    )
 ),
 
 calendar as (

@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: fct_station_status
+    description: >
+      Grao: 1 estacao x 1 observacao distinta. gap_minutes = diferenca para
+      a observacao anterior da mesma estacao (lacuna de coleta modelada
+      como feature, nao escondida).
+    columns:
+      - name: station_id
+        tests:
+          - not_null
+      - name: observed_at_utc
+        tests:
+          - not_null

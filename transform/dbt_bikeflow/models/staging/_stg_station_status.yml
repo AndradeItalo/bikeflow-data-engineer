@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: stg_station_status
+    description: "Leituras de status de estacao, deduplicadas por (station_id, last_reported)."
+    columns:
+      - name: station_id
+        tests:
+          - not_null
+      - name: observed_at_utc
+        tests:
+          - not_null
+      - name: num_bikes_available
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"

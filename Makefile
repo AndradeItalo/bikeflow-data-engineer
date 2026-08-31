@@ -58,9 +58,18 @@ test:  ## Testes unitarios (nao precisa de emulador)
 test-all:  ## Todos os testes, inclusive integracao (rode 'make up' antes)
 	$(BIN)/pytest
 
-seed-bronze:  ## Ingere 1 mes real pequeno (JC) + snapshot GBFS em bronze - para testar dbt sem esperar a NYC inteira
+seed-bronze:  ## Ingere 1 mes real pequeno (JC) + snapshot e 1 ciclo de poll/consume do GBFS em bronze
 	$(PY) -c "from bikeflow.ingestion.trips.pipeline import ingest_month; print(ingest_month(2025, 2, 'jc'))"
 	$(PY) -c "from bikeflow.ingestion.gbfs.snapshot import load_station_information; print(load_station_information())"
+	# bronze.station_status so' existe depois de rodar o ciclo de streaming
+	# pelo menos 1 vez - sem isso, stg_station_status (e tudo que depende
+	# dela) falha no dbt build por a tabela nao existir (achado no CI real).
+	# 1o poll e' sempre "cold start" (tabela de CDC vazia, publica tudo) -
+	# por isso o max_messages alto aqui, pra pegar uma amostra decente numa
+	# chamada so'.
+	$(PY) -c "from bikeflow.common import messaging; messaging.ensure_topic(); messaging.ensure_subscription()"
+	$(PY) -c "from bikeflow.ingestion.gbfs.poller import poll_once; print('publicadas:', poll_once())"
+	$(PY) -c "from bikeflow.streaming.consumer import consume_once; print('consumidas:', consume_once(max_messages=500))"
 
 dbt-debug:  ## Testa a conexao do dbt com o warehouse local
 	$(BIN)/dbt debug --project-dir $(DBT_DIR) --profiles-dir $(DBT_DIR)
