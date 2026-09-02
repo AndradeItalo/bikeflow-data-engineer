@@ -47,3 +47,31 @@ jobs:
       - name: Derruba os emuladores
         if: always()
         run: make down
+
+  # Job separado e independente do "test": nao precisa dos emuladores, do
+  # dbt nem do venv Python - so' constroi a imagem do Airflow (reaproveitando
+  # orchestration/Dockerfile) e checa que as DAGs importam sem erro contra um
+  # SQLite descartavel. Deliberadamente NAO sobe a stack completa (Postgres +
+  # webserver + scheduler + Mailpit) aqui - isso e' pesado de proposito
+  # (profile "airflow", fora do make up padrao) e essa checagem nao precisa
+  # de nada disso pra validar que o codigo das DAGs esta' sintaticamente e
+  # semanticamente correto.
+  dags:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build da imagem do Airflow
+        run: docker build -f orchestration/Dockerfile -t bikeflow-airflow-check .
+
+      - name: Valida que as DAGs importam sem erro
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/orchestration/dags:/opt/airflow/dags" \
+            -e AIRFLOW__CORE__LOAD_EXAMPLES=false \
+            -e AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////tmp/airflow.db \
+            bikeflow-airflow-check \
+            bash -c "airflow db migrate >/tmp/migrate.log 2>&1 && airflow dags list-import-errors -o json" \
+            > import_errors.json
+          cat import_errors.json
+          jq -e 'length == 0' import_errors.json

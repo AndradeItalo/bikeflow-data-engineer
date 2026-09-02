@@ -60,7 +60,16 @@ DBT_BASE_CMD = (
     schedule="@monthly",
     start_date=pendulum.datetime(2024, 1, 1, tz="America/New_York"),
     catchup=False,
-    default_args={"retries": 3, "retry_delay": pendulum.duration(minutes=5)},
+    default_args={
+        "retries": 3,
+        "retry_delay": pendulum.duration(minutes=5),
+        # alerta em falha (Fase 4.4): dispara so' depois de esgotar os
+        # retries acima. SMTP aponta pro Mailpit (docker-compose), captura
+        # de verdade em vez de mockar "confiamos que o email foi enviado".
+        "email": ["alerts@bikeflow.local"],
+        "email_on_failure": True,
+        "email_on_retry": False,
+    },
     tags=["trips", "batch"],
     # group e' parametro (nao hardcoded) de proposito: da' pra testar/rodar
     # com "jc" (arquivo pequeno, ~1-2MB) em vez de esperar um mes inteiro de

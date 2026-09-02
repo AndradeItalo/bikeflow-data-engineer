@@ -94,6 +94,26 @@ services:
       retries: 12
     restart: unless-stopped
 
+  # -------------------------------------------------------------------------
+  # Mailpit: servidor SMTP de teste local (Fase 4.4 - alertas em falha).
+  # Mesmo principio dos outros emuladores - captura e-mail de verdade (com
+  # API pra confirmar programaticamente) em vez de mockar "confiamos que o
+  # Airflow chamou smtplib.sendmail()".
+  # -------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: bikeflow-mailpit
+    profiles: ["airflow"]
+    ports:
+      - "8025:8025" # UI web + API REST
+      - "1025:1025" # SMTP
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8025/api/v1/info"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
   airflow-init:
     build:
       context: .
@@ -110,6 +130,8 @@ services:
     depends_on:
       postgres-airflow:
         condition: service_healthy
+      mailpit:
+        condition: service_healthy
     environment: &airflow-env
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
@@ -123,6 +145,13 @@ services:
       PUBSUB_EMULATOR_HOST: pubsub:8085
       BIKEFLOW_BUCKET: bikeflow-lake
       BIKEFLOW_DUCKDB_PATH: /opt/bikeflow/data/bikeflow.duckdb
+      # SMTP do Airflow -> Mailpit. Sem auth/TLS: e' um capturador local,
+      # nao um servidor de email de verdade.
+      AIRFLOW__SMTP__SMTP_HOST: mailpit
+      AIRFLOW__SMTP__SMTP_PORT: "1025"
+      AIRFLOW__SMTP__SMTP_STARTTLS: "False"
+      AIRFLOW__SMTP__SMTP_SSL: "False"
+      AIRFLOW__SMTP__SMTP_MAIL_FROM: alerts@bikeflow.local
     entrypoint: /bin/bash
     command:
       - -c

@@ -47,7 +47,17 @@ from airflow.operators.bash import BashOperator
     start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
     catchup=False,
     max_active_runs=1,
-    default_args={"retries": 2, "retry_delay": pendulum.duration(seconds=30)},
+    default_args={
+        "retries": 2,
+        "retry_delay": pendulum.duration(seconds=30),
+        # alerta em falha (Fase 4.4). Nota honesta: rodando a cada 2 min,
+        # uma falha persistente reenvia e-mail a cada ciclo - nao ha'
+        # deduplicacao/throttling aqui. Isso e' escopo de observabilidade
+        # (Fase 5), nao desta etapa.
+        "email": ["alerts@bikeflow.local"],
+        "email_on_failure": True,
+        "email_on_retry": False,
+    },
     tags=["gbfs", "streaming"],
 )
 def station_status_streaming() -> None:
