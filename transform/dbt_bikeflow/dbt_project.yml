@@ -14,6 +14,11 @@ snapshot-paths: ["snapshots"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+# Fase 5: persiste o resultado de cada teste em meta.dbt_test_results a
+# cada build/test - visibilidade que sobrevive ao terminal fechar.
+on-run-end:
+  - "{{ persist_test_results(results) }}"
+
 # staging/intermediate = silver (deduplicado, UTC, quarentena); marts = gold
 # (dimensional Kimball). As pastas nao sao as camadas - sao a organizacao
 # idiomatica do dbt dentro de cada camada. Ver docs/PLAN.md.

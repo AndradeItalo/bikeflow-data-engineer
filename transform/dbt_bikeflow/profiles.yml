@@ -12,3 +12,9 @@ bikeflow:
       threads: 4
       extensions:
         - icu # timezone-aware AT TIME ZONE, usado em bf_to_utc()
+      settings:
+        # sem isso, now() nesta conexao (ex: persist_test_results.sql) devolve
+        # o horario LOCAL do sistema, nao UTC - achado real na Fase 5.2 via
+        # dbt source freshness (ver bikeflow.common.warehouse, mesmo fix do
+        # lado Python - sao conexoes DuckDB diferentes, precisa nos dois).
+        TimeZone: UTC

@@ -41,6 +41,12 @@ def get_connection() -> duckdb.DuckDBPyConnection:
     settings = get_settings()
     Path(settings.duckdb_path).parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(settings.duckdb_path)
+    # Sem isso, now() devolve o horario LOCAL do sistema (fuso do ambiente),
+    # nao UTC - quebra toda coluna DEFAULT now() do projeto (_ingested_at,
+    # ingested_at, etc). So' apareceu rodando dbt source freshness (Fase 5.2)
+    # - nenhuma checagem anterior comparava contra um limite de tempo curto
+    # o bastante pra expor a diferenca de fuso.
+    conn.execute("SET TimeZone='UTC'")
     conn.execute(_CREATE_SCHEMA)
     conn.execute(_CREATE_MANIFEST_TABLE)
     return conn

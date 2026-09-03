@@ -20,3 +20,10 @@ sources:
           mensagem consumida. Escrita por bikeflow.streaming.consumer, nao
           pelo dbt. Pode ter duplicatas (retry de mensagem/task) - dedupe
           acontece em stg_station_status.
+        # So' faz sentido aqui (streaming, minutos) - nao em trips/
+        # station_information (batch mensal/snapshot, "fresco" nao e' o
+        # conceito certo pra essas fontes).
+        loaded_at_field: _ingested_at
+        freshness:
+          warn_after: { count: 15, period: minute }
+          error_after: { count: 60, period: minute }

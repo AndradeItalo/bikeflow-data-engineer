@@ -82,6 +82,9 @@ dbt-debug:  ## Testa a conexao do dbt com o warehouse local
 dbt-deps:  ## Instala os pacotes do dbt (dbt_utils)
 	$(BIN)/dbt deps --project-dir $(DBT_DIR)
 
+dbt-freshness: dbt-deps  ## Checa a "idade" do bronze.station_status (warn 15min / error 60min)
+	$(BIN)/dbt source freshness --project-dir $(DBT_DIR) --profiles-dir $(DBT_DIR)
+
 dbt-build: dbt-deps  ## Roda os models e testes do dbt (silver + gold)
 	$(BIN)/dbt build --project-dir $(DBT_DIR) --profiles-dir $(DBT_DIR)
 
