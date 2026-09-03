@@ -72,7 +72,9 @@ seed-bronze:  ## Ingere 1 mes real pequeno (JC) + snapshot e 1 ciclo de poll/con
 	# 1o poll e' sempre "cold start" (tabela de CDC vazia, publica tudo) -
 	# por isso o max_messages alto aqui, pra pegar uma amostra decente numa
 	# chamada so'.
-	$(PY) -c "from bikeflow.common import messaging; messaging.ensure_topic(); messaging.ensure_subscription()"
+	# ensure_dlq (nao so' ensure_topic/ensure_subscription) liga a DLQ de
+	# verdade na subscription principal - achado real, ver messaging.py.
+	$(PY) -c "from bikeflow.common import messaging; messaging.ensure_topic(); messaging.ensure_dlq()"
 	$(PY) -c "from bikeflow.ingestion.gbfs.poller import poll_once; print('publicadas:', poll_once())"
 	$(PY) -c "from bikeflow.streaming.consumer import consume_once; print('consumidas:', consume_once(max_messages=500))"
 

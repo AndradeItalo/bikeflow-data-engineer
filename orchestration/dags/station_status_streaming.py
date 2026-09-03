@@ -75,6 +75,21 @@ def station_status_streaming() -> None:
 
         return consume_once(max_messages=500)
 
+    @task
+    def check_dlq() -> None:
+        """Alerta (Fase 5.5) se sobrou mensagem na DLQ - falha a task de proposito.
+
+        Task falhando aciona o mesmo email_on_failure/Mailpit da Fase 4.4,
+        sem infra nova. Nota honesta (mesma do docstring da DAG): sem
+        deduplicacao, um problema persistente reenvia e-mail a cada ciclo de
+        2 min ate' alguem resolver.
+        """
+        from bikeflow.common import messaging
+
+        dlq_messages = messaging.peek_dlq()
+        if dlq_messages:
+            raise RuntimeError(f"{len(dlq_messages)} mensagem(ns) na DLQ: {dlq_messages}")
+
     dbt_build_station_status = BashOperator(
         task_id="dbt_build_station_status",
         bash_command=(
@@ -92,7 +107,27 @@ def station_status_streaming() -> None:
         append_env=True,
     )
 
-    poll() >> consume() >> dbt_build_station_status
+    check_freshness = BashOperator(
+        task_id="check_freshness",
+        bash_command=(
+            "dbt source freshness "
+            "--project-dir /opt/bikeflow/transform/dbt_bikeflow "
+            "--profiles-dir /opt/bikeflow/transform/dbt_bikeflow "
+            "--log-path /home/airflow/dbt_logs "
+            '--select "source:bronze.station_status"'
+        ),
+        env={"DBT_TARGET_PATH": "/home/airflow/dbt_target"},
+        append_env=True,
+    )
+
+    # dbt_build/check_dlq/check_freshness em paralelo depois de consume: sao
+    # 3 verificacoes independentes sobre o mesmo lote, nenhuma depende do
+    # resultado das outras - rodar em serie so' atrasaria o alerta sem
+    # ganhar nada.
+    consumed = poll() >> consume()
+    consumed >> dbt_build_station_status
+    consumed >> check_dlq()
+    consumed >> check_freshness
 
 
 station_status_streaming()

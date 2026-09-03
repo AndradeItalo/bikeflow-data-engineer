@@ -91,6 +91,48 @@ def ensure_subscription(
     return sub_path
 
 
+def ensure_dlq(max_delivery_attempts: int = 5) -> tuple[str, str]:
+    """Liga a DLQ de verdade na subscription principal + cria a subscription da propria DLQ.
+
+    Achado real (Fase 5.5): desde a Fase 3 so' o teste de integracao ligava
+    dead_letter_topic_id de verdade - o bootstrap de producao (seed-bronze)
+    chamava ensure_subscription() sem isso, entao a subscription real do
+    projeto nunca teve DLQ nenhuma. Mensagem invalida ficaria sendo
+    redelivered pra sempre, nunca aparecendo em lugar nenhum pra alertar.
+
+    Idempotente feito o resto do modulo: seguro chamar de novo (create_subscription
+    ja' existente e' suprimido). Como o emulador nao persiste nada entre
+    reinicios (module docstring), nao ha' risco de "subscription antiga sem
+    DLQ" sobreviver a um 'make up' novo.
+    """
+    settings = get_settings()
+    ensure_topic(settings.dlq_topic)
+    main_sub = ensure_subscription(
+        dead_letter_topic_id=settings.dlq_topic, max_delivery_attempts=max_delivery_attempts
+    )
+    dlq_sub = ensure_subscription(settings.dlq_subscription, settings.dlq_topic)
+    return main_sub, dlq_sub
+
+
+def peek_dlq(max_messages: int = 10, timeout: float = 5) -> list[dict[str, Any]]:
+    """Olha o que esta' na DLQ sem consumir - nack tudo de volta logo depois do pull.
+
+    Nem o emulador nem o Pub/Sub real expoe uma contagem direta de fila;
+    pull e' a unica forma de "ver" o que esta' la'. Nackar (em vez de ack)
+    evita que checar a DLQ destrua a propria evidencia do problema antes de
+    alguem investigar - usado pelo alerta de "DLQ > 0" (Fase 5.5).
+    """
+    subscriber = get_subscriber()
+    path = subscription_path(get_settings().dlq_subscription)
+    response = subscriber.pull(subscription=path, max_messages=max_messages, timeout=timeout)
+
+    payloads = [json.loads(r.message.data.decode("utf-8")) for r in response.received_messages]
+    ack_ids = [r.ack_id for r in response.received_messages]
+    if ack_ids:
+        subscriber.modify_ack_deadline(subscription=path, ack_ids=ack_ids, ack_deadline_seconds=0)
+    return payloads
+
+
 def publish_json(payload: dict[str, Any], topic_id: str | None = None) -> str:
     """Publica um dict como JSON. Bloqueia ate' confirmar o envio. Devolve o message_id."""
     publisher = get_publisher()

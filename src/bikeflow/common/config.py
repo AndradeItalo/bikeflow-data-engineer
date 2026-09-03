@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     topic: str = Field(default="station-status", alias="BIKEFLOW_TOPIC")
     subscription: str = Field(default="station-status-sub", alias="BIKEFLOW_SUBSCRIPTION")
     dlq_topic: str = Field(default="station-status-dlq", alias="BIKEFLOW_DLQ_TOPIC")
+    dlq_subscription: str = Field(
+        default="station-status-dlq-sub", alias="BIKEFLOW_DLQ_SUBSCRIPTION"
+    )
 
     # --- Warehouse --------------------------------------------------------
     duckdb_path: str = Field(default="data/bikeflow.duckdb", alias="BIKEFLOW_DUCKDB_PATH")
