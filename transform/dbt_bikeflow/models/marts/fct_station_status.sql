@@ -34,7 +34,13 @@ select
     status.is_returning,
     status.num_ebikes_available,
     {{ bf_seconds_diff("status.previous_observed_at_utc", "status.observed_at_utc") }} / 60.0
-        as gap_minutes
+        as gap_minutes,
+    status._ingested_at,
+    status._batch_id,
+    -- SLO de freshness (Fase 5.3): lag entre o GBFS reportar a mudanca e ela
+    -- chegar aqui. E' o dado que mart_pipeline_health (Fase 5.4) vai agregar.
+    {{ bf_seconds_diff("status.observed_at_utc", "status._ingested_at") }} / 60.0
+        as ingestion_lag_minutes
 from status
 left join {{ ref("dim_station") }} as station
     on status.station_id = station.station_id and station.is_current

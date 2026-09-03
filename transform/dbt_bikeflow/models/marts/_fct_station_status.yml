@@ -5,7 +5,9 @@ models:
     description: >
       Grao: 1 estacao x 1 observacao distinta. gap_minutes = diferenca para
       a observacao anterior da mesma estacao (lacuna de coleta modelada
-      como feature, nao escondida).
+      como feature, nao escondida). ingestion_lag_minutes = SLO de
+      freshness (docs/slo.md), lag entre o GBFS reportar e a linha chegar
+      aqui.
     columns:
       - name: station_id
         tests:
@@ -13,3 +15,8 @@ models:
       - name: observed_at_utc
         tests:
           - not_null
+      - name: ingestion_lag_minutes
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"

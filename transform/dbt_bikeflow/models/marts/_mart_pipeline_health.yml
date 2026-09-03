@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: mart_pipeline_health
+    description: >
+      1 linha, "saude como de agora": freshness (p95/max de
+      ingestion_lag_minutes na ultima 1h), volume (totais de trips e
+      station_status) e taxa de erro dos testes dbt. invocation_id/
+      tests_* refletem a invocacao ANTERIOR do dbt (on-run-end roda depois
+      deste model terminar - ver comentario no .sql). Full refresh a cada
+      build, sem historico proprio; historico de teste fica em
+      meta.dbt_test_results.
+    columns:
+      - name: invocation_id
+        tests:
+          - not_null:
+              config:
+                severity: warn
+                # null so' acontece no 1o build de uma base zerada (nenhum
+                # on-run-end rodou ainda) - cold start esperado, nao falha
+                # de pipeline. warn, nao error.
+      - name: test_error_rate
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
